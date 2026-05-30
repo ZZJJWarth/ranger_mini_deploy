@@ -1,0 +1,201 @@
+manifestVersion: 1
+name: robonix-demo-2026-05-25
+
+# Demo deploy (merged lhw nav-loop into 0.1):
+#   - lhw : ranger_description, ranger_chassis, nav2, explore, side_launch/, urdf/
+#   - enkerewpo : mid360_lidar (livox self-heal), mid360_imu, realsense_camera
+#                 (rgb/depth MCP snapshot), mapping (native + IMU icp_odometry)
+#   - 0.1 add-ons : speech, audio_driver, sentinel POC
+#
+# rbnx boot is STRICTLY SERIAL, declaration order matters.
+# CAN bus is UP, but the car will not move until something sends cmd_vel.
+
+env:
+  # Speech / FunASR
+  INPUT_GAIN: "1.0"
+  ROBONIX_ASR_DUMP_DIR: /tmp/asrdump
+  HF_ENDPOINT: https://hf-mirror.com
+  HF_HUB_OFFLINE: "1"
+  # Scene + Mapping native (overlay venv on Jetson)
+  ROBONIX_SCENE_FORCE: native
+  ROBONIX_SCENE_PLATFORM: jetson_orin
+  SCENE_NATIVE_PYTHON: /home/syswonder/wheatfox/robonix/system/scene/rbnx-build/venv/bin/python
+  SCENE_WEB_PORT: "50107"
+  ROBONIX_MAPPING_FORCE: native
+  ROBONIX_MAPPING_PLATFORM: jetson_orin
+  AUDIO_SPEAKER_DEVICE: plughw:CARD=Plus,DEV=0
+  AUDIO_SPEAKER_SAMPLE_RATE: "16000"
+  # Sentinel POC (executor reads at startup)
+  SENTINEL_RULES_FILE: /home/syswonder/robonix-v0.1-deploy/sentinel.yaml
+  # VLM endpoint shared by skills that need image+text generation
+  # (welcome). Same values as pilot.vlm.* below — keep in sync.
+  VLM_BASE_URL: https://api.ofox.io/v1
+  VLM_API_KEY: sk-of-WmCvqhOuLuBxAExANMYGsYKajzuhTYyxAMuofRRdDbQnlKNUsYdPHAmizheeamZb
+  VLM_MODEL: gpt-5.5
+
+system:
+  atlas:
+    listen: 127.0.0.1:50051
+    log: info
+  executor:
+    listen: 127.0.0.1:50061
+    log: info
+  pilot:
+    listen: 127.0.0.1:50071
+    log: info
+    vlm:
+      upstream: https://api.ofox.io/v1
+      api_key: sk-of-WmCvqhOuLuBxAExANMYGsYKajzuhTYyxAMuofRRdDbQnlKNUsYdPHAmizheeamZb
+      model: gpt-5.5
+      api_format: openai
+  liaison:
+    listen: 127.0.0.1:50081
+    log: info
+  scene:
+    log: info
+
+primitive:
+  # 1. Static TF stand-in (until soma ships) — MUST be first so downstream
+  # TF lookups (mapping/nav) resolve. lhw fork; mount offsets are CAD
+  # defaults, refine per actual hardware later.
+  - name: ranger_description
+    url: https://github.com/lhw2002426/ranger_description_rbnx
+    branch: main
+    config:
+      launch_args:
+        lidar_x:  "0.18"
+        lidar_y:  "0.00"
+        lidar_z:  "0.425"
+        camera_x: "0.28"
+        camera_y: "0.00"
+        camera_z: "0.30"
+      spawn_grace_s: 1.5
+
+  # 2. MID-360 lidar (enkerewpo — has the livox "half-enabled" self-heal
+  # that saved us today).
+  - name: mid360_lidar
+    url: https://github.com/enkerewpo/mid360_lidar_rbnx
+    branch: main
+    config:
+      lidar_topic: /scanner/cloud
+      lidar_ip: 192.168.1.161
+      xfer_format: 0
+      sentinel_timeout_s: 30.0
+
+  # 3. MID-360 IMU shim (consumes /livox/imu published by #2)
+  - name: mid360_imu
+    url: https://github.com/enkerewpo/mid360_imu_rbnx
+    branch: main
+    config:
+      imu_topic: /livox/imu
+      sentinel_timeout_s: 30.0
+
+  # 4. RealSense D435i (enkerewpo — has rgb/depth MCP snapshot tools
+  # exposed to pilot as `robonix/primitive/camera/{snapshot,depth_snapshot}`)
+  - name: realsense_camera
+    url: https://github.com/enkerewpo/realsense_camera_rbnx
+    branch: main
+    config:
+      camera_name: camera_435i
+      rgb_profile: 640x480x15
+      depth_profile: 480x270x15
+      align_depth: true
+      enable_imu: false
+      enable_sync: true
+      sentinel_timeout_s: 30.0
+
+  # 5. Ranger Mini chassis (lhw fork). CAN bus is UP on the host, but
+  # the car ONLY moves when something publishes cmd_vel — we just want
+  # /odom for mapping + nav2 to work. Don't issue navigate goals during
+  # this run.
+  - name: ranger_chassis
+    url: https://github.com/lhw2002426/ranger_chassis_rbnx
+    branch: main
+    config:
+      port_name: can_ranger
+      robot_model: ranger_mini_v2
+      odom_topic_name: odom
+      publish_odom_tf: true
+      sentinel_timeout_s: 30.0
+
+  #    This stays the DEFAULT speaker for the car (TTS plays out the
+  #    physical USB speaker even when the macos_bridge mic is selected).
+  #    To make sure pick stays consistent, pin from chat:
+  #      Settings (Ctrl+,) → Audio → speaker provider = audio_driver
+  - name: audio_driver
+    path: /home/syswonder/wheatfox/robonix/examples/webots/primitives/audio_driver
+
+  # 7. macOS audio bridge — optional. When the mac_server WebSocket on
+  #    the macOS side is up, this primitive ALSO registers
+  #    robonix/primitive/audio/{mic,speaker,driver}, so atlas ends up
+  #    with TWO providers for each audio contract. Operator chooses:
+  #      Settings (Ctrl+,) → Audio → mic provider = audio_macos_bridge
+  #    Leaves speaker on audio_driver (USB) per the comment above.
+  #
+  #    On the macOS side run, in one terminal:
+  #      cd ~/robonix-scripts/mac_server && python3 server.py
+  #
+  #    The `host:` below is the macOS box's tailscale (or LAN) addr —
+  #    edit when you swap mac machines.
+  - name: audio_macos_bridge
+    path: /home/syswonder/wheatfox/robonix/examples/webots/primitives/audio_macos_bridge
+    config:
+      host: 100.78.199.22   # ← UPDATE: macOS tailscale / LAN address
+      port: 60000
+
+service:
+  # Speech (ASR/TTS, FunASR+edge-tts, overlay venv on Jetson). Declares
+  # robonix/system/speech/{asr,asr_stream,tts,speak,list_speakers}.
+  - name: speech
+    path: /home/syswonder/wheatfox/robonix/system/speech
+
+  # Voiceprint — ECAPA-TDNN one-shot speaker ID. Registers
+  # robonix/system/speech/{voiceprint, voiceprint_enroll, voiceprint_list}.
+  # enroll/list are admin RPCs consumed by `rbnx chat`'s
+  # Settings → Users page. First boot needs `bash scripts/build.sh`
+  # to install the venv + pre-warm the model (heavyish download).
+  - name: voiceprint
+    path: /home/syswonder/wheatfox/robonix/system/voiceprint
+
+  # Mapping (enkerewpo — native rtabmap + IMU-aided icp_odometry).
+  # Chassis is on so we fuse /odom too. lidar3d + visual loop-closure + 3D.
+  - name: mapping
+    url: https://github.com/enkerewpo/mapping_rbnx
+    branch: main
+    config:
+      algo: rtabmap
+      platform: jetson_orin
+      base_frame: base_link
+      use_sim_time: false
+      sensors:
+        lidar2d: false
+        lidar3d: true
+        rgb: true
+        rgbd: true
+        imu: false
+        odom: true
+      map_mode: mapping
+
+  # Nav2 (lhw fork — declares navigate/status/cancel as MCP, so
+  # pilot's LLM can directly issue navigation goals via tool calls).
+  - name: nav2
+    url: https://github.com/lhw2002426/nav2_wrapper_rbnx
+    branch: main
+    config:
+      params_profile: slam
+      use_sim_time: false
+      action_wait_s: 45.0
+      topic_remap: {}
+
+skill:
+  # Explore (lazy-activated by executor on first MCP call to the
+  # `robonix/skill/explore/explore` tool).
+  - name: explore
+    url: https://github.com/lhw2002426/explore_rbnx
+    branch: main
+    config: {}
+
+  # PKU CS 学院迎宾 skill (snapshot 前置相机 + VLM 改写官方介绍 +
+  # speech.speak 播报)。Deploy-local, 源码在 ./skills/welcome/。
+  - name: welcome
+    path: /home/syswonder/robonix-v0.1-deploy/skills/welcome

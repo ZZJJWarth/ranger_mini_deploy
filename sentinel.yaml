@@ -1,0 +1,15 @@
+# Sentinel rules — POC (executor-embedded).
+#
+# 规则只一种:在 deny_between 窗口内对 contract_id 的调用直接拒掉,
+# executor 返回 sentinel:<id>: <reason> [deny_window: ...]。
+# end < start = 跨夜窗口。
+version: 1
+rules:
+  # 夜间巡检策略:explore 巡检任务仅 22:00–次日 07:00 允许执行。
+  # 白天调用 LLM 的 'robonix/skill/explore/explore' 工具(常见 trigger:
+  # "巡视一圈"、"夜间巡检"、"做次巡逻")会被本规则拦截,
+  # 演示 sentinel 在白天的 demo 场合天然能演到。
+  - id: day_no_night_patrol
+    contract_id: robonix/skill/explore/explore
+    deny_between: ['07:00', '22:00']
+    reason: '夜间巡检策略:explore 巡检任务仅 22:00–07:00 允许;白天扰民被拦截'

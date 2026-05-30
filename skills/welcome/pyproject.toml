@@ -1,0 +1,24 @@
+# SPDX-License-Identifier: MulanPSL-2.0
+# welcome skill — uv-managed venv,只需要 robonix-api + openai + grpc。
+# robonix-api 通过 workspace 解析到 /home/syswonder/wheatfox/robonix/pylib/robonix-api。
+
+[project]
+name = "robonix-skill-welcome"
+version = "0.1.0"
+description = "PKU CS welcome skill — snapshot + VLM + speech.speak."
+requires-python = ">=3.10"
+dependencies = [
+    "robonix-api",
+    "openai>=1.30",
+    "grpcio>=1.60",
+    "grpcio-tools>=1.60",
+    "protobuf>=4.24",
+    "fastmcp>=0.4",
+]
+
+[tool.uv]
+package = false
+
+# Resolve robonix-api via the source tree's workspace root.
+[tool.uv.sources]
+robonix-api = { path = "/home/syswonder/wheatfox/robonix/pylib/robonix-api", editable = true }

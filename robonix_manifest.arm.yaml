@@ -1,0 +1,229 @@
+manifestVersion: 1
+name: robonix-demo-2026-05-25-arm
+
+# DEMO DEPLOY (POST-INCIDENT)
+#
+# 2026-05-24 incident: with the previous version of this manifest active,
+# pick.pick(<object>) drove the AgileX Piper into the ground because:
+#   - easy_handeye2 calib was an identity-transform PLACEHOLDER
+#   - yolo_grasp returned a grasp pose that piper_moveit executed
+#     against the bad eye-in-hand frame
+#   → arm crashed into the floor, snapping a mounting screw.
+#
+# ALL ARM-SIDE PACKAGES (orbbec_camera, piper_ctl, piper_description,
+# easy_handeye2, yolo_world, yolo_grasp, piper_moveit, pick) are REMOVED
+# from this manifest until BOTH of the following land:
+#   1. Real hand-eye calibration replaces the identity placeholder in
+#      easy_handeye2_rbnx (config/calibrations/my_eih_calib.calib).
+#   2. yolo_grasp_rbnx's PLACEHOLDER mode is replaced with the actual
+#      estimator, AND piper_moveit refuses to execute when the resulting
+#      grasp pose has an unreasonable z (e.g. below table_height - 5cm).
+#
+# Until then this manifest stays nav + scene + speech only, matching the
+# original /home/syswonder/robonix-v0.1-deploy/robonix_manifest.demo.yaml
+# 1:1 (kept as a separate file only so the arm section can be flipped
+# 2026-05-25 update: pick verified working — arm-side packages
+# re-enabled below. Header kept for incident history.
+# back on without git surgery once the above are fixed).
+
+env:
+  INPUT_GAIN: "1.0"
+  ROBONIX_ASR_DUMP_DIR: /tmp/asrdump
+  HF_ENDPOINT: https://hf-mirror.com
+  HF_HUB_OFFLINE: "1"
+  ROBONIX_SCENE_FORCE: native
+  ROBONIX_SCENE_PLATFORM: jetson_orin
+  SCENE_NATIVE_PYTHON: /home/syswonder/wheatfox/robonix/system/scene/rbnx-build/venv/bin/python
+  SCENE_WEB_PORT: "50107"
+  ROBONIX_MAPPING_FORCE: native
+  ROBONIX_MAPPING_PLATFORM: jetson_orin
+  AUDIO_SPEAKER_DEVICE: plughw:CARD=Plus,DEV=0
+  AUDIO_SPEAKER_SAMPLE_RATE: "16000"
+  AUDIO_SPEAKER_VOLUME_PCT: "90"
+  SENTINEL_RULES_FILE: /home/syswonder/robonix-v0.1-deploy/sentinel.yaml
+
+system:
+  atlas:
+    listen: 127.0.0.1:50051
+    log: info
+  executor:
+    listen: 127.0.0.1:50061
+    log: info
+  pilot:
+    listen: 127.0.0.1:50071
+    log: info
+    vlm:
+      upstream: https://api.ofox.io/v1
+      api_key: sk-of-WmCvqhOuLuBxAExANMYGsYKajzuhTYyxAMuofRRdDbQnlKNUsYdPHAmizheeamZb
+      model: gpt-5.5
+      api_format: openai
+  liaison:
+    listen: 127.0.0.1:50081
+    log: info
+  scene:
+    log: info
+
+primitive:
+  - name: ranger_description
+    url: https://github.com/lhw2002426/ranger_description_rbnx
+    branch: main
+    config:
+      launch_args:
+        lidar_x:  "0.18"
+        lidar_y:  "0.00"
+        lidar_z:  "0.425"
+        camera_x: "0.28"
+        camera_y: "0.00"
+        camera_z: "0.30"
+      spawn_grace_s: 1.5
+
+  - name: mid360_lidar
+    url: https://github.com/enkerewpo/mid360_lidar_rbnx
+    branch: main
+    config:
+      lidar_topic: /scanner/cloud
+      lidar_ip: 192.168.1.161
+      xfer_format: 0
+      sentinel_timeout_s: 30.0
+
+  - name: mid360_imu
+    url: https://github.com/enkerewpo/mid360_imu_rbnx
+    branch: main
+    config:
+      imu_topic: /livox/imu
+      sentinel_timeout_s: 30.0
+
+  - name: realsense_camera
+    url: https://github.com/enkerewpo/realsense_camera_rbnx
+    branch: main
+    config:
+      camera_name: camera_435i
+      rgb_profile: 640x480x15
+      depth_profile: 480x270x15
+      align_depth: true
+      enable_imu: false
+      enable_sync: true
+      sentinel_timeout_s: 30.0
+
+  - name: ranger_chassis
+    url: https://github.com/lhw2002426/ranger_chassis_rbnx
+    branch: main
+    config:
+      port_name: can_ranger
+      robot_model: ranger_mini_v2
+      odom_topic_name: odom
+      publish_odom_tf: true
+      sentinel_timeout_s: 30.0
+
+  - name: audio_driver
+    path: /home/syswonder/wheatfox/robonix/examples/webots/primitives/audio_driver
+
+  - name: audio_macos_bridge
+    path: /home/syswonder/wheatfox/robonix/examples/webots/primitives/audio_macos_bridge
+    config:
+      host: 100.78.199.22
+      port: 60000
+
+  # - name: orbbec_camera
+  #   path: /home/syswonder/lhw/rbnx_piper_packages/rbnx-boot/cache/orbbec_camera
+  #   config:
+  #     camera_name: camera
+  #     depth_registration: true
+  #     enable_d2c_viewer: false
+  #     color_width: 640
+  #     color_height: 480
+  #     color_fps: 10
+  #     depth_width: 640
+  #     depth_height: 400
+  #     depth_fps: 10
+  #     sentinel_timeout_s: 30.0
+
+  - name: piper_ctl
+    path: /home/syswonder/lhw/rbnx_piper_packages/rbnx-boot/cache/piper_ctl
+    config:
+      can_port: can_piper
+      can_bitrate: 1000000
+      can_usb_address: "1-4.4:1.0"
+      auto_can_setup: false
+      auto_enable: true
+      gripper_exist: true
+      gripper_val_mutiple: 2
+      sentinel_timeout_s: 30.0
+
+  - name: piper_description
+    path: /home/syswonder/lhw/rbnx_piper_packages/rbnx-boot/cache/piper_description
+
+  - name: easy_handeye2
+    path: /home/syswonder/lhw/rbnx_piper_packages/rbnx-boot/cache/easy_handeye2
+
+service:
+  # - name: memory
+  #   path: /home/syswonder/wheatfox/robonix/system/memory
+  #   config:
+  #     backend: sqlite
+
+  - name: speech
+    path: /home/syswonder/wheatfox/robonix/system/speech
+
+  - name: voiceprint
+    path: /home/syswonder/wheatfox/robonix/system/voiceprint
+
+  - name: mapping
+    url: https://github.com/enkerewpo/mapping_rbnx
+    branch: main
+    config:
+      algo: rtabmap
+      platform: jetson_orin
+      base_frame: base_link
+      use_sim_time: false
+      sensors:
+        lidar2d: false
+        lidar3d: true
+        rgb: true
+        rgbd: true
+        imu: false
+        odom: true
+      map_mode: mapping
+
+  - name: nav2
+    url: https://github.com/lhw2002426/nav2_wrapper_rbnx
+    branch: main
+    config:
+      params_profile: slam
+      use_sim_time: false
+      action_wait_s: 45.0
+      topic_remap: {}
+
+  - name: yolo_world
+    path: /home/syswonder/lhw/rbnx_piper_packages/rbnx-boot/cache/yolo_world
+    config:
+      model_path: ""
+      rgb_topic: ""
+      depth_topic: ""
+      camera_info_topic: ""
+
+  - name: yolo_grasp
+    path: /home/syswonder/lhw/rbnx_piper_packages/rbnx-boot/cache/yolo_grasp
+
+  - name: piper_moveit
+    path: /home/syswonder/lhw/rbnx_piper_packages/rbnx-boot/cache/piper_moveit
+    config:
+      arm_group_name: arm
+      end_effector_link: link6
+      gripper_action_name: /gripper_controller/follow_joint_trajectory
+      sentinel_timeout_s: 60.0
+
+skill:
+  - name: explore
+    url: https://github.com/lhw2002426/explore_rbnx
+    branch: main
+    config: {}
+
+  - name: welcome
+    path: /home/syswonder/robonix-v0.1-deploy/skills/welcome
+
+  - name: pick
+    path: /home/syswonder/lhw/rbnx_piper_packages/rbnx-boot/cache/pick
+    config:
+      default_timeout_s: 60.0
+      default_max_retries: 5

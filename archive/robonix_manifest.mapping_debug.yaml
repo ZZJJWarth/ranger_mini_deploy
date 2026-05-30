@@ -1,0 +1,75 @@
+manifestVersion: 1
+name: robonix-mapping-debug
+
+# Slim deploy manifest for mapping-only bring-up. Use for: real-robot
+# rtabmap verification, fastlio2 debug, comparing algo switches without
+# nav2/explore noise.
+#
+# Boot:   rbnx boot -f robonix_manifest.mapping_debug.yaml
+#
+# Switch SLAM algo by editing service.mapping.config.algo (rtabmap →
+# fastlio2); external atlas contracts (service/map/{occupancy_grid,
+# pointcloud,pose,odom}) stay identical regardless.
+#
+# Decoupled TF design (option A): each primitive owns the static TF
+# from base_link to its own sensor frame. mapping never learns vendor
+# frame names. When a chassis driver / soma URDF *does* publish those
+# TFs, just leave `extrinsics` out of the primitive's config and the
+# primitive skips spawning its own static_transform_publisher.
+#
+# This config targets stationary debug (chassis off, robot doesn't
+# move). The lidar is treated as the body origin (zero extrinsics) —
+# refine numbers when the actual mount pose is measured.
+
+env: {}
+
+system:
+  atlas:
+    listen: 127.0.0.1:50051
+    log: info
+
+primitive:
+  - name: mid360_lidar
+    url: https://github.com/enkerewpo/mid360_lidar_rbnx
+    branch: main
+    config:
+      lidar_topic: /scanner/cloud
+      lidar_ip: 192.168.1.161
+      xfer_format: 2 # PointCloud2 XYZIT
+      sentinel_timeout_s: 30.0
+      # Lidar's own ROS frame_id (Livox driver default). The static
+      # TF publisher will name this as the child frame.
+      frame_id: livox_frame
+      # parent_frame defaults to base_link; override only if integrating
+      # with a different body model.
+      parent_frame: base_link
+      # Mount pose of the lidar in the body (base_link) frame. Identity
+      # for stationary debug — the lidar IS the body's origin until we
+      # have real measurements / URDF. Replace with the measured mount
+      # pose once known. roll/pitch/yaw in radians.
+      extrinsics:
+        x: 0.0
+        y: 0.0
+        z: 0.0
+        roll: 0.0
+        pitch: 0.0
+        yaw: 0.0
+
+service:
+  - name: mapping
+    url: https://github.com/enkerewpo/mapping_rbnx
+    branch: main
+    config:
+      algo: rtabmap
+      platform: jetson_orin
+      sensors:
+        lidar2d: false
+        lidar3d: true
+        rgb: false # no realsense in this run
+        rgbd: false
+        imu: false
+        odom: false # icp_odometry derives from lidar
+      # No base_frame override — defaults to base_link, which the lidar
+      # primitive's static TF connects to its own livox_frame. Keep
+      # this section deploy-agnostic; mapping never names vendor frames.
+      use_sim_time: false

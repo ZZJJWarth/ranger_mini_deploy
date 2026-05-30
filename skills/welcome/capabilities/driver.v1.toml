@@ -1,0 +1,12 @@
+# Lifecycle interface for the welcome skill.
+# rbnx boot 调 Driver(CMD_INIT, config_json) 后,welcome_skill.atlas_bridge 的
+# on_init 把 cfg 读进来(没 cfg 也无所谓)。on_activate 在第一次 MCP 调用时
+# resolve 上游 (camera/snapshot + speech/speak),并构造 OpenAI 客户端。
+[contract]
+id      = "robonix/skill/welcome/driver"
+version = "1"
+kind    = "skill"
+idl     = "lifecycle/srv/Driver.srv"
+
+[mode]
+type = "rpc"

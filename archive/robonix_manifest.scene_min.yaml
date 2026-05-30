@@ -1,0 +1,37 @@
+manifestVersion: 1
+name: robonix-scene-debug
+
+# Scene bring-up debug. Chassis OFF. ConceptGraphs scene is pure RGBD
+# (depth backproject -> per-object point cloud); it does NOT consume
+# lidar. So: realsense (rgb+depth) -> mapping (rgbd-only SLAM -> pose)
+# -> scene (native, GPU torch). No lidar/imu needed for the scene path.
+
+env:
+  ROBONIX_SCENE_FORCE: native
+  SCENE_NATIVE_PYTHON: /home/syswonder/wheatfox/robonix/system/scene/rbnx-build/venv/bin/python
+  HF_ENDPOINT: https://hf-mirror.com
+  HF_HUB_OFFLINE: "1"
+
+system:
+  atlas:
+    listen: 127.0.0.1:50051
+    log: info
+  memory:
+    backend: sqlite
+    log: info
+  scene:
+    log: info
+
+primitive:
+  - name: realsense_camera
+    url: https://github.com/enkerewpo/realsense_camera_rbnx
+    branch: main
+    config:
+      camera_name: camera_435i
+      rgb_profile: 640x480x15
+      depth_profile: 480x270x15
+      align_depth: true
+      enable_imu: false
+      enable_sync: false
+      sentinel_timeout_s: 30.0
+

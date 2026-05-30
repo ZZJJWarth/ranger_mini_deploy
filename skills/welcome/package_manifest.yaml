@@ -1,0 +1,31 @@
+# welcome — 学院迎宾 skill (本仓库 deploy-local, 不在 robonix mainline)。
+#
+# 用户说"介绍学院" / "欢迎大家" 等 → LLM 调
+# robonix/skill/welcome/welcome → snapshot 前置相机 → VLM ≤80 字现场化
+# 改写官方介绍 → speech.speak。
+#
+# 上游依赖 (atlas resolve, on_activate 阶段):
+#   robonix/primitive/camera/snapshot  (chassis-mount realsense)
+#   robonix/system/speech/speak        (TTS + ALSA)
+#
+# Manifest-level 配置: 无 (所有 knob 都是 LLM 的 audience_hint 参数)。
+# VLM endpoint 通过 deploy manifest env 块传:
+#   VLM_BASE_URL / VLM_API_KEY / VLM_MODEL
+# 未设 → fallback 到固定文本,skill 仍能成功播报。
+manifestVersion: 1
+
+package:
+  name: com.robonix.skill.welcome
+  version: 0.1.0
+  vendor: robonix
+  description: PKU CS 学院迎宾 skill — snapshot + VLM + speech.speak。
+  license: MulanPSL-2.0
+
+build: bash scripts/build.sh
+start: bash scripts/start.sh
+
+capabilities:
+  - name: robonix/skill/welcome/driver
+    path: capabilities/driver.v1.toml
+  - name: robonix/skill/welcome/welcome
+    path: capabilities/welcome.v1.toml

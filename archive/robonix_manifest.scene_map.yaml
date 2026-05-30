@@ -1,0 +1,74 @@
+manifestVersion: 1
+name: robonix-scene-map
+
+# Full scene+mapping bring-up, all NATIVE (no docker), chassis OFF.
+#   mid360_lidar + mid360_imu  → lidar3d (pointcloud) + imu
+#   mapping (rtabmap, native)  → lidar-inertial SLAM (icp_odometry+IMU,
+#                                deskew, 3DoF) → service/map/{pose,...}
+#   realsense_camera           → rgb + depth (USB2 profiles)
+#   scene (native)             → ConceptGraphs perception + map-frame
+#                                objects + robot pose (from mapping)
+# mapping is lidar3d+imu ONLY (clean lidar-inertial; no rgbd → no need
+# for a livox→camera TF that no URDF provides). scene consumes the
+# camera rgb/depth directly + pose from mapping.
+
+env:
+  ROBONIX_SCENE_FORCE: native
+  SCENE_NATIVE_PYTHON: /home/syswonder/wheatfox/robonix/system/scene/rbnx-build/venv/bin/python
+  HF_ENDPOINT: https://hf-mirror.com
+  HF_HUB_OFFLINE: "1"
+  ROBONIX_MAPPING_FORCE: native
+
+system:
+  atlas:
+    listen: 127.0.0.1:50051
+    log: info
+  # memory:
+  #   backend: sqlite
+  #   log: info
+  scene:
+    log: info
+
+primitive:
+  - name: mid360_lidar
+    url: https://github.com/enkerewpo/mid360_lidar_rbnx
+    branch: main
+    config:
+      lidar_topic: /scanner/cloud
+      lidar_ip: 192.168.1.161
+      xfer_format: 0
+      sentinel_timeout_s: 30.0
+  - name: mid360_imu
+    url: https://github.com/enkerewpo/mid360_imu_rbnx
+    branch: main
+    config:
+      imu_topic: /livox/imu
+      defer_probe_s: 2.0
+  - name: realsense_camera
+    url: https://github.com/enkerewpo/realsense_camera_rbnx
+    branch: main
+    config:
+      camera_name: camera_435i
+      rgb_profile: 640x480x15
+      depth_profile: 480x270x15
+      align_depth: true
+      enable_imu: false
+      enable_sync: false
+      sentinel_timeout_s: 30.0
+
+service:
+  - name: mapping
+    url: https://github.com/enkerewpo/mapping_rbnx
+    branch: main
+    config:
+      algo: rtabmap
+      platform: jetson_orin
+      base_frame: livox_frame
+      use_sim_time: false
+      sensors:
+        lidar2d: false
+        lidar3d: true
+        rgb: false
+        rgbd: false
+        imu: true
+        odom: false

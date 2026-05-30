@@ -1,0 +1,8 @@
+# Welcome 欢迎播报 RPC。无参也能跑(空 audience_hint = LLM 自由发挥);
+# 显式 hint 会作为 system prompt 的一部分让 LLM 知道场合。
+# abstract_interface_id: robonix/skill/welcome/welcome
+string  audience_hint     # 可选: "三人参观", "评审组", "" = 不提示
+---
+bool    success           # 摄像头 + speech 都走通才 true
+string  spoken_text       # 实际播报出来的文本(便于 chat 显示)
+string  error             # 非空 = 失败原因

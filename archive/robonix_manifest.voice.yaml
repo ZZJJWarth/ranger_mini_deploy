@@ -1,0 +1,52 @@
+manifestVersion: 1
+name: robonix-voice-test
+
+# Liaison 语音交互延迟测试（全 native）。链路：
+#   audio_macos_bridge (mic←你的 mac via WebSocket) → speech ASR(FunASR GPU)
+#   → liaison → pilot(VLM) → speech TTS(edge-tts) → audio_macos_bridge(speaker→mac)
+# speech 在 Jetson 本地用 overlay venv（系统 CUDA torch，FunASR 走 GPU）。
+# USB ALSA 喇叭(audio_driver) 暂不接，饭后单独测。
+
+env:
+  VLM_BASE_URL: https://api.ofox.io/v1
+  VLM_API_KEY: sk-of-WmCvqhOuLuBxAExANMYGsYKajzuhTYyxAMuofRRdDbQnlKNUsYdPHAmizheeamZb
+  VLM_MODEL: gpt-5.5
+  INPUT_GAIN: "1.0"
+  ROBONIX_ASR_DUMP_DIR: /tmp/asrdump
+  HF_ENDPOINT: https://hf-mirror.com
+  HF_HUB_OFFLINE: "1"
+  # audio_macos_bridge → 你的 mac (tailscale)。port 默认 60000，按你 mac_server 实际改。
+  AUDIO_BRIDGE_HOST: 100.78.199.22
+  AUDIO_BRIDGE_PORT: "60000"
+  AUDIO_SPEAKER_DEVICE: plughw:2,0
+  AUDIO_SPEAKER_SAMPLE_RATE: "16000"
+
+system:
+  atlas:
+    listen: 127.0.0.1:50051
+    log: info
+  executor:
+    listen: 127.0.0.1:50061
+    log: info
+  pilot:
+    listen: 127.0.0.1:50071
+    log: info
+    vlm:
+      upstream: https://api.ofox.io/v1
+      api_key: sk-of-WmCvqhOuLuBxAExANMYGsYKajzuhTYyxAMuofRRdDbQnlKNUsYdPHAmizheeamZb
+      model: gpt-5.5
+      api_format: openai
+  liaison:
+    listen: 127.0.0.1:50081
+    log: info
+  speech:
+    log: info
+
+primitive:
+  # - name: audio_macos_bridge
+  #   path: /home/syswonder/wheatfox/robonix/examples/webots/primitives/audio_macos_bridge
+  #   config:
+  #     host: 100.78.199.22
+  #     port: 60000
+  - name: audio_driver
+    path: /home/syswonder/wheatfox/robonix/examples/webots/primitives/audio_driver

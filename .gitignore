@@ -4,3 +4,12 @@ rbnx-boot/
 .idea/
 *.swp
 __pycache__/
+.venv/
+
+# secrets + per-host overrides
+.env
+
+# working backups (rolling `.bak` / `.bak-*` / `.bak.*` chains)
+*.bak
+*.bak-*
+*.bak.*

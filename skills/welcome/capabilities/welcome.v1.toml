@@ -1,0 +1,17 @@
+# robonix/skill/welcome/welcome — 现场化欢迎+学院介绍。
+# 用户触发("请给大家介绍一下学院" / "欢迎一下" 之类)后:
+#   1. 抓一帧 chassis 前置相机
+#   2. 用 VLM 看图 + 基于官方介绍文本(intro_text.py)生成简短现场化播报
+#   3. 调 robonix/system/speech/speak 播报
+# 单次操作,无 status/cancel。
+[contract]
+id      = "robonix/skill/welcome/welcome"
+version = "1"
+kind    = "skill"
+idl     = "welcome/srv/Welcome.srv"
+
+[mode]
+type = "rpc"
+
+[semantics]
+user_invocable = true
