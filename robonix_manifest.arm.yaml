@@ -54,7 +54,7 @@ system:
     log: info
     vlm:
       upstream: https://api.ofox.io/v1
-      api_key: sk-of-WmCvqhOuLuBxAExANMYGsYKajzuhTYyxAMuofRRdDbQnlKNUsYdPHAmizheeamZb
+      api_key: REPLACE_WITH_YOUR_VLM_API_KEY
       model: gpt-5.5
       api_format: openai
   liaison:

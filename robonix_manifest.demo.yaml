@@ -30,7 +30,7 @@ env:
   # VLM endpoint shared by skills that need image+text generation
   # (welcome). Same values as pilot.vlm.* below — keep in sync.
   VLM_BASE_URL: https://api.ofox.io/v1
-  VLM_API_KEY: sk-of-WmCvqhOuLuBxAExANMYGsYKajzuhTYyxAMuofRRdDbQnlKNUsYdPHAmizheeamZb
+  VLM_API_KEY: REPLACE_WITH_YOUR_VLM_API_KEY
   VLM_MODEL: gpt-5.5
 
 system:
@@ -45,7 +45,7 @@ system:
     log: info
     vlm:
       upstream: https://api.ofox.io/v1
-      api_key: sk-of-WmCvqhOuLuBxAExANMYGsYKajzuhTYyxAMuofRRdDbQnlKNUsYdPHAmizheeamZb
+      api_key: REPLACE_WITH_YOUR_VLM_API_KEY
       model: gpt-5.5
       api_format: openai
   liaison:
