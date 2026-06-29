@@ -18,8 +18,8 @@ All package URLs in `robonix_manifest.yaml` resolve from this enkerewpo GitHub o
 
 ```bash
 # on the Jetson, in this directory:
-rbnx build .         # clones each url: package and runs its build.sh
-rbnx boot  .         # spawns each one and runs Driver(CMD_INIT, config)
+rbnx build         # clones each url: package and runs its build.sh
+rbnx boot          # spawns each one and runs Driver(CMD_INIT, config)
 ```
 
 `rbnx build` writes everything to `rbnx-build/cache/<name>/` so the original working dir on the Jetson is never touched.
