@@ -1,0 +1,49 @@
+manifestVersion: 1
+name: robonix-sensors-test
+
+# Minimal bring-up for testing the Ranger Mini's perception sensors only.
+# This intentionally does not start chassis, mapping, nav2, speech, scene,
+# audio, explore, or welcome. Use it when you only need to verify that the
+# MID-360 lidar/IMU and RealSense D435i camera publish ROS topics.
+
+env: {}
+
+system:
+  atlas:
+    listen: 127.0.0.1:50051
+    log: info
+
+primitive:
+  - name: mid360_lidar
+    path: /home/warth/Desktop/code/ros_driver/mid360_lidar_rbnx
+    config:
+      lidar_topic: /scanner/cloud
+      lidar_zc_topic: /scanner/cloud_zc
+      lidar_ip: 192.168.1.161
+      xfer_format: 0
+      zc_shm_name: robonix_zc_lidar3d
+      zc_shm_size: 67108864
+      sentinel_timeout_s: 30.0
+
+  - name: mid360_imu
+    path: /home/warth/Desktop/code/ros_driver/mid360_imu_rbnx
+    config:
+      imu_topic: /livox/imu
+      sentinel_timeout_s: 30.0
+
+  - name: realsense_camera
+    path: /home/warth/Desktop/code/ros_driver/realsense_camera_rbnx
+    config:
+      camera_name: camera_435i
+      rgb_profile: 640x480x15
+      depth_profile: 480x270x15
+      align_depth: true
+      enable_imu: false
+      enable_sync: true
+      enable_pointcloud: true
+      rgb_zc_topic: /camera/rgb_zc
+      depth_zc_topic: /camera/depth_zc
+      pointcloud_zc_topic: /camera/pointcloud_zc
+      zc_shm_name: robonix_zc_camera
+      zc_shm_size: 67108864
+      sentinel_timeout_s: 30.0
