@@ -70,7 +70,7 @@ primitive:
 
 service:
   - name: mapping
-    url: https://github.com/ZZJJWarth/ranger_mini_deploy
+    url: https://github.com/ZZJJWarth/mapping_rbnx
     branch: zc_immigrate
     config:
       algo: rtabmap
