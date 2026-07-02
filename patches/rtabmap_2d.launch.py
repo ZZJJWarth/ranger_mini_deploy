@@ -77,6 +77,9 @@ def _make_nodes(context, *args, **kwargs):
     have_rgb = bool(rgb_topic) and rgb_topic != _NONE
     have_depth = bool(depth_topic) and depth_topic != _NONE
     have_rgbd = have_rgb and have_depth
+    use_rgb_zc = have_rgbd and os.environ.get("ROBONIX_MAPPING_RGB_ZC", "1").lower() not in ("0", "false", "no")
+    use_depth_zc = use_rgb_zc and os.environ.get("ROBONIX_MAPPING_DEPTH_ZC", "1").lower() not in ("0", "false", "no")
+    use_scan_cloud_zc = have_scan_cloud and os.environ.get("ROBONIX_MAPPING_SCAN_CLOUD_ZC", "1").lower() not in ("0", "false", "no")
     have_odom = bool(odom_topic) and odom_topic != _NONE
 
     if not (have_scan or have_scan_cloud or have_rgbd):
@@ -103,6 +106,15 @@ def _make_nodes(context, *args, **kwargs):
         "subscribe_rgbd": False,
         "subscribe_rgb": have_rgbd,
         "subscribe_depth": have_rgbd,
+        "subscribe_rgb_zc": use_rgb_zc,
+        "subscribe_depth_zc": use_depth_zc,
+        "subscribe_scan_cloud_zc": use_scan_cloud_zc,
+        "rgb_zc_topic": os.environ.get("ROBONIX_MAPPING_RGB_ZC_TOPIC", "/camera/rgb_zc"),
+        "depth_zc_topic": os.environ.get("ROBONIX_MAPPING_DEPTH_ZC_TOPIC", "/camera/depth_zc"),
+        "scan_cloud_zc_topic": os.environ.get("ROBONIX_MAPPING_SCAN_CLOUD_ZC_TOPIC", "/scanner/cloud_zc"),
+        "rgb_zc_shm_name": os.environ.get("ROBONIX_MAPPING_RGB_ZC_SHM", "robonix_zc_camera"),
+        "rgb_zc_shm_size": int(os.environ.get("ROBONIX_MAPPING_RGB_ZC_SHM_SIZE", "67108864")),
+        "rgb_zc_stamp_tolerance": float(os.environ.get("ROBONIX_MAPPING_RGB_ZC_STAMP_TOLERANCE", "0.05")),
         "subscribe_odom_info": False,
         "approx_sync": True,
         "queue_size": 30,

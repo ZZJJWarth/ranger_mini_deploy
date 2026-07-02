@@ -1,12 +1,19 @@
 manifestVersion: 1
 name: robonix-sensors-test
 
-# Minimal bring-up for testing the Ranger Mini's perception sensors only.
-# This intentionally does not start chassis, mapping, nav2, speech, scene,
-# audio, explore, or welcome. Use it when you only need to verify that the
-# MID-360 lidar/IMU and RealSense D435i camera publish ROS topics.
+# Minimal bring-up for the Ranger Mini perception stack. It starts static TF,
+# MID-360 lidar/IMU, RealSense D435i, and RTAB-Map. It intentionally does not
+# start chassis, nav2, speech, scene, audio, explore, or welcome.
 
-env: {}
+env:
+  ROBONIX_MAPPING_RGB_ZC: "1"
+  ROBONIX_MAPPING_DEPTH_ZC: "1"
+  ROBONIX_MAPPING_SCAN_CLOUD_ZC: "1"
+  ROBONIX_MAPPING_RGB_ZC_TOPIC: "/camera/rgb_zc"
+  ROBONIX_MAPPING_DEPTH_ZC_TOPIC: "/camera/depth_zc"
+  ROBONIX_MAPPING_SCAN_CLOUD_ZC_TOPIC: "/scanner/cloud_zc"
+  ROBONIX_MAPPING_RGB_ZC_SHM: "robonix_zc_camera"
+  ROBONIX_MAPPING_RGB_ZC_SHM_SIZE: "67108864"
 
 system:
   atlas:
@@ -14,6 +21,19 @@ system:
     log: info
 
 primitive:
+  - name: ranger_description
+    url: https://github.com/lhw2002426/ranger_description_rbnx
+    branch: main
+    config:
+      launch_args:
+        lidar_x:  "0.18"
+        lidar_y:  "0.00"
+        lidar_z:  "0.425"
+        camera_x: "0.28"
+        camera_y: "0.00"
+        camera_z: "0.30"
+      spawn_grace_s: 1.5
+
   - name: mid360_lidar
     path: /home/warth/Desktop/code/ros_driver/mid360_lidar_rbnx
     config:
@@ -21,7 +41,7 @@ primitive:
       lidar_zc_topic: /scanner/cloud_zc
       lidar_ip: 192.168.1.161
       xfer_format: 0
-      zc_shm_name: robonix_zc_lidar3d
+      zc_shm_name: robonix_zc_camera
       zc_shm_size: 67108864
       sentinel_timeout_s: 30.0
 
@@ -47,3 +67,21 @@ primitive:
       zc_shm_name: robonix_zc_camera
       zc_shm_size: 67108864
       sentinel_timeout_s: 30.0
+
+service:
+  - name: mapping
+    url: https://github.com/ZZJJWarth/ranger_mini_deploy
+    branch: zc_immigrate
+    config:
+      algo: rtabmap
+      platform: jetson_orin
+      base_frame: base_link
+      use_sim_time: false
+      sensors:
+        lidar2d: false
+        lidar3d: true
+        rgb: true
+        rgbd: true
+        imu: false
+        odom: false
+      map_mode: mapping
