@@ -75,6 +75,7 @@ service:
   - name: mapping
     url: https://github.com/ZZJJWarth/mapping_rbnx
     branch: zc_immigrate
+    manifest: package_manifest.jetson-native.yaml
     config:
       algo: rtabmap
       platform: jetson_orin
